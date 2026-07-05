@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NMDer Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">N</div>
+      NMDer
+    </div>
+    <nav class="side-nav">
+      <a href="#" class="side-link active" data-filter="all">Alle services</a>
+      <a href="#" class="side-link" data-filter="web_service">Web Services</a>
+      <a href="#" class="side-link" data-filter="static_site">Static Sites</a>
+    </nav>
+    <div class="mode-badge" id="modeBadge">Mock-modus</div>
+  </aside>
+
+  <main class="main">
+    <header class="main-header">
+      <div>
+        <h1>Services</h1>
+        <p class="muted">Overzicht van al je gedeployde projecten</p>
+      </div>
+      <button class="btn btn-primary" id="newServiceBtn">+ Nieuwe service</button>
+    </header>
+
+    <div class="service-grid" id="serviceGrid">
+      <!-- services worden hier ingeladen via app.js -->
+    </div>
+  </main>
+</div>
+
+<!-- Modal: nieuwe service -->
+<div class="modal-overlay" id="newServiceModal">
+  <div class="modal">
+    <h2>Nieuwe service</h2>
+    <form id="newServiceForm">
+      <label>Naam
+        <input type="text" name="name" placeholder="bijv. mijn-website" required>
+      </label>
+      <label>Type
+        <select name="type" required>
+          <option value="static_site">Static Site</option>
+          <option value="web_service">Web Service</option>
+        </select>
+      </label>
+      <label>GitHub-repo
+        <input type="text" name="repo" placeholder="github.com/gebruiker/repo" required>
+      </label>
+      <label>Branch
+        <input type="text" name="branch" placeholder="main" value="main">
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="cancelModal">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Deploy</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: logs -->
+<div class="modal-overlay" id="logsModal">
+  <div class="modal modal-wide">
+    <div class="modal-header-row">
+      <h2 id="logsTitle">Logs</h2>
+      <button class="btn btn-ghost" id="closeLogsModal">Sluiten</button>
+    </div>
+    <div class="log-window mono" id="logWindow"></div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

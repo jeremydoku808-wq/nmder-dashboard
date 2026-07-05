@@ -1,0 +1,140 @@
+// public/app.js
+
+const serviceGrid = document.getElementById('serviceGrid');
+const newServiceModal = document.getElementById('newServiceModal');
+const newServiceBtn = document.getElementById('newServiceBtn');
+const cancelModal = document.getElementById('cancelModal');
+const newServiceForm = document.getElementById('newServiceForm');
+
+const logsModal = document.getElementById('logsModal');
+const logWindow = document.getElementById('logWindow');
+const logsTitle = document.getElementById('logsTitle');
+const closeLogsModal = document.getElementById('closeLogsModal');
+
+const sideLinks = document.querySelectorAll('.side-link');
+
+let currentFilter = 'all';
+let pollTimer = null;
+
+// ---------- Data ophalen ----------
+async function fetchServices() {
+  const res = await fetch('/api/services');
+  const services = await res.json();
+  renderServices(services);
+}
+
+function renderServices(services) {
+  const filtered = currentFilter === 'all'
+    ? services
+    : services.filter((s) => s.type === currentFilter);
+
+  if (filtered.length === 0) {
+    serviceGrid.innerHTML = `<p class="muted">Nog geen services van dit type. Klik op "+ Nieuwe service" om te beginnen.</p>`;
+    return;
+  }
+
+  serviceGrid.innerHTML = filtered.map((s) => `
+    <div class="service-card">
+      <div class="service-card-top">
+        <div>
+          <div class="service-name">${escapeHtml(s.name)}</div>
+          <div class="service-type">${s.type === 'web_service' ? 'Web Service' : 'Static Site'}</div>
+        </div>
+        <span class="status-badge ${s.status === 'live' ? 'status-live' : 'status-building'}">
+          <span class="status-dot"></span>
+          ${s.status === 'live' ? 'Live' : 'Bezig met builden'}
+        </span>
+      </div>
+      <div class="service-repo mono">${escapeHtml(s.repo)} · ${escapeHtml(s.branch)}</div>
+      <a class="service-url mono" href="${s.url}" target="_blank">${s.url}</a>
+      <div class="service-actions">
+        <button class="btn btn-ghost" onclick="openLogs('${s.id}', '${escapeHtml(s.name)}')">Logs</button>
+        <button class="btn btn-danger" onclick="removeService('${s.id}')">Verwijderen</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, (c) => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+// ---------- Nieuwe service aanmaken ----------
+newServiceBtn.addEventListener('click', () => {
+  newServiceModal.classList.add('open');
+});
+cancelModal.addEventListener('click', () => {
+  newServiceModal.classList.remove('open');
+});
+
+newServiceForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(newServiceForm);
+  const body = {
+    name: formData.get('name').trim(),
+    type: formData.get('type'),
+    repo: formData.get('repo').trim(),
+    branch: formData.get('branch').trim() || 'main',
+  };
+
+  const res = await fetch('/api/services', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (res.ok) {
+    newServiceForm.reset();
+    newServiceModal.classList.remove('open');
+    fetchServices();
+  } else {
+    const err = await res.json();
+    alert('Kon service niet aanmaken: ' + err.error);
+  }
+});
+
+// ---------- Verwijderen ----------
+async function removeService(id) {
+  if (!confirm('Deze service verwijderen?')) return;
+  await fetch(`/api/services/${id}`, { method: 'DELETE' });
+  fetchServices();
+}
+
+// ---------- Logs bekijken ----------
+async function openLogs(id, name) {
+  logsTitle.textContent = `Logs — ${name}`;
+  logsModal.classList.add('open');
+  await refreshLogs(id);
+
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(() => refreshLogs(id), 1500);
+}
+
+async function refreshLogs(id) {
+  const res = await fetch(`/api/services/${id}/logs`);
+  const logs = await res.json();
+  logWindow.innerHTML = logs.map((l) => `<div>${escapeHtml(l)}</div>`).join('');
+  logWindow.scrollTop = logWindow.scrollHeight;
+}
+
+closeLogsModal.addEventListener('click', () => {
+  logsModal.classList.remove('open');
+  if (pollTimer) clearInterval(pollTimer);
+});
+
+// ---------- Filter (sidebar) ----------
+sideLinks.forEach((link) => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    sideLinks.forEach((l) => l.classList.remove('active'));
+    link.classList.add('active');
+    currentFilter = link.dataset.filter;
+    fetchServices();
+  });
+});
+
+// ---------- Auto-refresh service lijst ----------
+fetchServices();
+setInterval(fetchServices, 4000);

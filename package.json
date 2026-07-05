@@ -1,0 +1,147 @@
+// render/renderClient.js
+//
+// Dit bestand is de ENIGE plek die straks moet veranderen om NMDer
+// écht met Render te laten praten. Alle routes in server.js roepen
+// alleen deze functies aan — ze weten niet of het mock of echt is.
+//
+// Documentatie van de echte Render API (voor later):
+// https://api-docs.render.com
+
+const { nanoid } = require('nanoid');
+
+const USE_MOCK = process.env.USE_MOCK !== 'false';
+
+// ---------- In-memory "database" voor de mock-versie ----------
+let services = [
+  {
+    id: 'srv-demo1',
+    name: 'bedrijfswebsite',
+    type: 'static_site',
+    repo: 'github.com/jouw-bedrijf/website',
+    branch: 'main',
+    status: 'live',
+    url: 'https://bedrijfswebsite.nmder.app',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'srv-demo2',
+    name: 'klanten-api',
+    type: 'web_service',
+    repo: 'github.com/jouw-bedrijf/api',
+    branch: 'main',
+    status: 'live',
+    url: 'https://klanten-api.nmder.app',
+    createdAt: new Date().toISOString(),
+  },
+];
+
+let logsByService = {
+  'srv-demo1': [
+    '[10:02:01] Build gestart',
+    '[10:02:04] Bestanden ge\u00fcpload',
+    '[10:02:09] Build geslaagd',
+    '[10:02:10] Live gezet op https://bedrijfswebsite.nmder.app',
+  ],
+  'srv-demo2': [
+    '[09:14:02] Build gestart',
+    '[09:14:20] Dependencies ge\u00efnstalleerd',
+    '[09:14:31] Server gestart op poort 10000',
+    '[09:14:32] Live gezet op https://klanten-api.nmder.app',
+  ],
+};
+
+// ---------- Publieke functies die server.js gebruikt ----------
+
+async function listServices() {
+  if (USE_MOCK) {
+    return services;
+  }
+  // ECHTE VERSIE (later):
+  // const res = await axios.get('https://api.render.com/v1/services', {
+  //   headers: { Authorization: `Bearer ${process.env.RENDER_API_KEY}` }
+  // });
+  // return res.data;
+  throw new Error('Echte Render API nog niet gekoppeld');
+}
+
+async function createService({ name, type, repo, branch }) {
+  if (USE_MOCK) {
+    const id = 'srv-' + nanoid(8);
+    const newService = {
+      id,
+      name,
+      type, // 'web_service' | 'static_site'
+      repo,
+      branch: branch || 'main',
+      status: 'building',
+      url: `https://${name}.nmder.app`,
+      createdAt: new Date().toISOString(),
+    };
+    services.push(newService);
+    logsByService[id] = [`[${nowTime()}] Build gestart vanaf ${repo} (${branch || 'main'})`];
+
+    // Simuleer een build die na een paar seconden "live" wordt
+    simulateBuild(id);
+
+    return newService;
+  }
+  // ECHTE VERSIE (later):
+  // const res = await axios.post('https://api.render.com/v1/services', {
+  //   type,
+  //   name,
+  //   repo,
+  //   branch,
+  // }, {
+  //   headers: { Authorization: `Bearer ${process.env.RENDER_API_KEY}` }
+  // });
+  // return res.data;
+  throw new Error('Echte Render API nog niet gekoppeld');
+}
+
+async function deleteService(id) {
+  if (USE_MOCK) {
+    services = services.filter((s) => s.id !== id);
+    delete logsByService[id];
+    return { deleted: true };
+  }
+  throw new Error('Echte Render API nog niet gekoppeld');
+}
+
+async function getLogs(id) {
+  if (USE_MOCK) {
+    return logsByService[id] || [];
+  }
+  throw new Error('Echte Render API nog niet gekoppeld');
+}
+
+// ---------- Interne helpers (alleen voor de mock) ----------
+
+function nowTime() {
+  return new Date().toLocaleTimeString('nl-NL');
+}
+
+function simulateBuild(id) {
+  const steps = [
+    'Dependencies installeren...',
+    'Project builden...',
+    'Build geslaagd',
+    'Live gezet',
+  ];
+  steps.forEach((step, i) => {
+    setTimeout(() => {
+      const service = services.find((s) => s.id === id);
+      if (!service) return;
+      logsByService[id].push(`[${nowTime()}] ${step}`);
+      if (i === steps.length - 1) {
+        service.status = 'live';
+      }
+    }, (i + 1) * 1500);
+  });
+}
+
+module.exports = {
+  listServices,
+  createService,
+  deleteService,
+  getLogs,
+};
